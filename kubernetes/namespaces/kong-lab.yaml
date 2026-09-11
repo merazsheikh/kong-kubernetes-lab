@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kong-learning
+  labels:
+    project: kong-kubernetes-lab
+    environment: lab

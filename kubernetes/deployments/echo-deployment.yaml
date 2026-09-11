@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: echo
+  namespace: kong-learning
+  labels:
+    app: echo
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: echo
+
+  template:
+    metadata:
+      labels:
+        app: echo
+
+    spec:
+      containers:
+        - name: echo
+          image: hashicorp/http-echo:latest
+
+          args:
+            - "-text=Hello from Kubernetes"
+
+          ports:
+            - containerPort: 5678
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "32Mi"
+
+            limits:
+              cpu: "100m"
+              memory: "64Mi"
