@@ -22,13 +22,10 @@ spec:
     spec:
       containers:
         - name: echo
-          image: hashicorp/http-echo:latest
-
-          args:
-            - "-text=Hello from Kubernetes"
+          image: mendhak/http-https-echo:latest
 
           ports:
-            - containerPort: 5678
+            - containerPort: 8080
 
           resources:
             requests:
