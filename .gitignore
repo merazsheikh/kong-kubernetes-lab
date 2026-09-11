@@ -1,0 +1,35 @@
+# Environment / secrets
+.env
+.env.*
+*.secret
+secrets/
+credentials/
+
+# TLS certificates and private keys
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Kubernetes local config
+kubeconfig
+.kube/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Helm
+charts/*.tgz
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temporary files
+*.log
+*.tmp
