@@ -1,0 +1,6 @@
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: jwt-auth
+  namespace: kong-learning
+plugin: jwt

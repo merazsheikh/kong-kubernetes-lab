@@ -1,0 +1,9 @@
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: api-users-acl
+  namespace: kong-learning
+plugin: acl
+config:
+  allow:
+    - api-users
