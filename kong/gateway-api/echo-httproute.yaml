@@ -1,0 +1,36 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: echo-gateway-api
+  namespace: kong-learning
+spec:
+  parentRefs:
+    - name: kong
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /gateway-echo
+
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: configuration.konghq.com
+            kind: KongPlugin
+            name: rate-limit-5
+
+        - type: ExtensionRef
+          extensionRef:
+            group: configuration.konghq.com
+            kind: KongPlugin
+            name: jwt-auth
+
+        - type: ExtensionRef
+          extensionRef:
+            group: configuration.konghq.com
+            kind: KongPlugin
+            name: api-users-acl
+
+      backendRefs:
+        - name: echo
+          port: 80
