@@ -1,0 +1,66 @@
+name: Validate Kong Platform
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    name: Terraform Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive terraform/
+
+      - name: Validate Kubernetes Terraform
+        working-directory: terraform/kubernetes
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate AWS EKS Terraform
+        working-directory: terraform/aws-eks
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+  kubernetes:
+    name: Kubernetes Manifest Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check YAML syntax
+        run: |
+          python - <<'PY'
+          import pathlib
+          import yaml
+
+          roots = [
+              pathlib.Path("kubernetes"),
+              pathlib.Path("kong"),
+          ]
+
+          for root in roots:
+              if not root.exists():
+                  continue
+
+              for path in root.rglob("*.yaml"):
+                  print(f"Checking {path}")
+
+                  with path.open() as f:
+                      list(yaml.safe_load_all(f))
+
+          print("YAML syntax validation passed.")
+          PY

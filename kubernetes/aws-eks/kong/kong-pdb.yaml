@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kong
+  namespace: kong
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: kong
