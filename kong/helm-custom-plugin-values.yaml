@@ -1,0 +1,5 @@
+gateway:
+  plugins:
+    configMaps:
+      - name: request-header-validator
+        pluginName: request-header-validator
