@@ -34,3 +34,6 @@ Thumbs.db
 *.log
 *.tmp
 kong/helm-current-values.yaml
+
+# Generated mTLS lab certificates
+mtls-lab/
