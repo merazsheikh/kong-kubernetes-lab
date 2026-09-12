@@ -1,0 +1,9 @@
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: request-header-validator
+  namespace: kong-learning
+plugin: request-header-validator
+config:
+  header_name: X-Client-ID
+  status_code: 400

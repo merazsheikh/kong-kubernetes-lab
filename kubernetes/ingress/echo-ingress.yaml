@@ -1,15 +1,13 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
-
 metadata:
   name: echo
   namespace: kong-learning
   annotations:
     konghq.com/strip-path: "true"
-
+    konghq.com/plugins: rate-limit-5,jwt-auth,api-users-acl,request-header-validator
 spec:
   ingressClassName: kong
-
   rules:
     - http:
         paths:
