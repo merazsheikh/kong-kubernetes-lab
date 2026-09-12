@@ -33,3 +33,4 @@ Thumbs.db
 # Temporary files
 *.log
 *.tmp
+kong/helm-current-values.yaml
