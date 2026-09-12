@@ -1,0 +1,11 @@
+gateway:
+  image:
+    repository: kong-request-header-validator
+    tag: 3.9.3-1.0.0
+    pullPolicy: IfNotPresent
+
+  plugins:
+    configMaps: []
+
+  env:
+    plugins: bundled,request-header-validator
