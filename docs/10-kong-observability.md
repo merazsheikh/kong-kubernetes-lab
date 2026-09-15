@@ -107,7 +107,7 @@ response bandwidth
 Examples available in relevant Kong versions/configurations include:
 
 ```text
-kong_http_requests_total
+http_requests_total
 kong_request_latency_ms
 kong_upstream_latency_ms
 kong_kong_latency_ms
