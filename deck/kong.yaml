@@ -1,0 +1,37 @@
+_format_version: "3.0"
+
+services:
+  - name: orders-api
+    url: http://orders-api.internal:8080
+
+    routes:
+      - name: orders-route
+        paths:
+          - /orders
+        methods:
+          - GET
+          - POST
+        strip_path: true
+
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
+
+      - name: correlation-id
+        config:
+          header_name: X-Request-ID
+          generator: uuid
+          echo_downstream: true
+
+  - name: customer-api
+    url: http://customer-api.internal:8080
+
+    routes:
+      - name: customer-route
+        paths:
+          - /customers
+        methods:
+          - GET
+        strip_path: true

@@ -1,14 +1,17 @@
 name: Validate Kong Platform
 
 on:
-  pull_request:
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
 
 jobs:
+
   terraform:
-    name: Terraform Validation
+    name: Validate Terraform
     runs-on: ubuntu-latest
 
     steps:
@@ -18,61 +21,72 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform format check
-        run: terraform fmt -check -recursive terraform/
-
       - name: Validate Kubernetes Terraform
         working-directory: terraform/kubernetes
         run: |
           terraform init -backend=false
+          terraform fmt -check
           terraform validate
 
       - name: Validate AWS EKS Terraform
         working-directory: terraform/aws-eks
         run: |
           terraform init -backend=false
+          terraform fmt -check
           terraform validate
 
+
   kubernetes:
-    name: Kubernetes Manifest Validation
+    name: Validate Kubernetes YAML
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check YAML syntax
+      - name: Install PyYAML
         run: |
-          python - <<'PY'
+          python3 -m pip install pyyaml
+
+      - name: Validate YAML files
+        run: |
+          python3 - <<'PY'
           import pathlib
           import yaml
 
-          roots = [
+          directories = [
               pathlib.Path("kubernetes"),
               pathlib.Path("kong"),
           ]
 
-          for root in roots:
-              if not root.exists():
-                  continue
+          files = []
 
-              for path in root.rglob("*.yaml"):
-                  print(f"Checking {path}")
+          for directory in directories:
+              if directory.exists():
+                  files.extend(directory.rglob("*.yaml"))
+                  files.extend(directory.rglob("*.yml"))
 
-                  with path.open() as f:
-                      list(yaml.safe_load_all(f))
+          print(f"Validating {len(files)} YAML files")
 
-          print("YAML syntax validation passed.")
+          for file in sorted(files):
+              print(f"Validating {file}")
+
+              with file.open() as f:
+                  list(yaml.safe_load_all(f))
+
+          print("Kubernetes/Kong YAML validation passed")
           PY
 
+
   custom-kong-plugin:
+    name: Validate Custom Kong Plugin
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Helm
+      - name: Setup Helm
         uses: azure/setup-helm@v4
 
       - name: Add Kong Helm repository
@@ -84,3 +98,35 @@ jobs:
         run: |
           chmod +x scripts/validate-custom-plugin.sh
           ./scripts/validate-custom-plugin.sh
+
+
+  deck:
+    name: Validate decK Configuration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install decK
+        run: |
+          DECK_VERSION=$(curl -s https://api.github.com/repos/Kong/deck/releases/latest \
+            | grep '"tag_name"' \
+            | cut -d '"' -f 4 \
+            | sed 's/^v//')
+
+          echo "Installing decK ${DECK_VERSION}"
+
+          curl -sL \
+            "https://github.com/Kong/deck/releases/download/v${DECK_VERSION}/deck_${DECK_VERSION}_linux_amd64.tar.gz" \
+            -o deck.tar.gz
+
+          tar -xzf deck.tar.gz
+          sudo mv deck /usr/local/bin/deck
+
+          deck version
+
+      - name: Validate Kong declarative configuration
+        run: |
+          deck file validate deck/kong.yaml
+          echo "decK configuration validation passed"
