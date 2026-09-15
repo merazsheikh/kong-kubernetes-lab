@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders-api
+  namespace: kong-learning
+spec:
+  selector:
+    app: orders-api
+
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+  type: ClusterIP

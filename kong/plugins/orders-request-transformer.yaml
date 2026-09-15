@@ -1,0 +1,9 @@
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: orders-request-transformer
+  namespace: kong-learning
+plugin: request-transformer
+config:
+  replace:
+    uri: /api/v1/orders

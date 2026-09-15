@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: orders-api
+  namespace: kong-learning
+  annotations:
+    konghq.com/strip-path: "true"
+    konghq.com/plugins: orders-request-transformer,rate-limit-5,jwt-auth,api-users-acl,prometheus
+
+spec:
+  ingressClassName: kong
+
+  rules:
+    - http:
+        paths:
+          - path: /orders
+            pathType: Prefix
+            backend:
+              service:
+                name: orders-api
+                port:
+                  number: 80
