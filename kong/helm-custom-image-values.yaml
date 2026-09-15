@@ -1,7 +1,8 @@
 gateway:
   image:
-    repository: kong-request-header-validator
-    tag: 3.9.3-1.0.0
+    repository: ghcr.io/merazsheikh/kong-request-header-validator
+    tag: kong-plugin-v1.0.0
+    effectiveSemver: "3.9.3"
     pullPolicy: IfNotPresent
 
   plugins:
