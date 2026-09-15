@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   name: kong
   namespace: kong
+
 spec:
   replicas: 3
 
@@ -35,32 +36,44 @@ spec:
             - name: KONG_PROXY_LISTEN
               value: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
 
+            - name: KONG_STATUS_LISTEN
+              value: "0.0.0.0:8100"
+
           ports:
             - name: proxy
               containerPort: 8000
+              protocol: TCP
 
             - name: proxy-tls
               containerPort: 8443
+              protocol: TCP
+
+            - name: status
+              containerPort: 8100
+              protocol: TCP
 
           readinessProbe:
             httpGet:
-              path: /status
-              port: 8001
+              path: /status/ready
+              port: status
             initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
 
           livenessProbe:
             httpGet:
               path: /status
-              port: 8001
+              port: status
             initialDelaySeconds: 30
             periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 3
 
           resources:
             requests:
               cpu: "250m"
               memory: "256Mi"
-
             limits:
               cpu: "1000m"
               memory: "1Gi"
