@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
 
   terraform:
@@ -22,18 +25,16 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Validate Kubernetes Terraform
-        working-directory: terraform/kubernetes
         run: |
-          terraform init -backend=false
-          terraform fmt -check
-          terraform validate
+          terraform -chdir=terraform/kubernetes init -backend=false
+          terraform -chdir=terraform/kubernetes fmt -check
+          terraform -chdir=terraform/kubernetes validate
 
       - name: Validate AWS EKS Terraform
-        working-directory: terraform/aws-eks
         run: |
-          terraform init -backend=false
-          terraform fmt -check
-          terraform validate
+          terraform -chdir=terraform/aws-eks init -backend=false
+          terraform -chdir=terraform/aws-eks fmt -check
+          terraform -chdir=terraform/aws-eks validate
 
 
   kubernetes:
@@ -45,8 +46,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install PyYAML
-        run: |
-          python3 -m pip install pyyaml
+        run: pip install pyyaml
 
       - name: Validate YAML files
         run: |
@@ -55,26 +55,27 @@ jobs:
           import yaml
 
           directories = [
-              pathlib.Path("kubernetes"),
-              pathlib.Path("kong"),
+              "kubernetes",
+              "kong",
           ]
 
-          files = []
+          checked = 0
 
           for directory in directories:
-              if directory.exists():
-                  files.extend(directory.rglob("*.yaml"))
-                  files.extend(directory.rglob("*.yml"))
+              root = pathlib.Path(directory)
 
-          print(f"Validating {len(files)} YAML files")
+              if not root.exists():
+                  continue
 
-          for file in sorted(files):
-              print(f"Validating {file}")
+              for path in root.rglob("*.yaml"):
+                  print(f"Validating {path}")
 
-              with file.open() as f:
-                  list(yaml.safe_load_all(f))
+                  with path.open(encoding="utf-8") as f:
+                      list(yaml.safe_load_all(f))
 
-          print("Kubernetes/Kong YAML validation passed")
+                  checked += 1
+
+          print(f"Validated {checked} YAML files")
           PY
 
 
@@ -110,23 +111,28 @@ jobs:
 
       - name: Install decK
         run: |
-          DECK_VERSION=$(curl -s https://api.github.com/repos/Kong/deck/releases/latest \
-            | grep '"tag_name"' \
-            | cut -d '"' -f 4 \
-            | sed 's/^v//')
+          DECK_VERSION=$(curl -fsSL \
+            https://api.github.com/repos/Kong/deck/releases/latest \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"].lstrip("v"))')
 
           echo "Installing decK ${DECK_VERSION}"
 
-          curl -sL \
-            "https://github.com/Kong/deck/releases/download/v${DECK_VERSION}/deck_${DECK_VERSION}_linux_amd64.tar.gz" \
-            -o deck.tar.gz
+          INSTALL_DIR="$(mktemp -d)"
 
-          tar -xzf deck.tar.gz
-          sudo mv deck /usr/local/bin/deck
+          curl -fsSL \
+            "https://github.com/Kong/deck/releases/download/v${DECK_VERSION}/deck_${DECK_VERSION}_linux_amd64.tar.gz" \
+            -o "${INSTALL_DIR}/deck.tar.gz"
+
+          tar -xzf "${INSTALL_DIR}/deck.tar.gz" \
+            -C "${INSTALL_DIR}"
+
+          sudo install \
+            -m 0755 \
+            "${INSTALL_DIR}/deck" \
+            /usr/local/bin/deck
 
           deck version
 
       - name: Validate Kong declarative configuration
         run: |
           deck file validate deck/kong.yaml
-          echo "decK configuration validation passed"
