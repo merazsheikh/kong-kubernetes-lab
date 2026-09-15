@@ -1,40 +1,27 @@
 # Kong Gateway on Kubernetes Engineering Lab
 
+[![CI Status](https://img.shields.io/github/actions/workflow/status/merazsheikh/kong-kubernetes-lab/ci.yml?branch=main&style=for-the-badge)](https://github.com/merazsheikh/kong-kubernetes-lab/actions)
+
 Hands-on API platform engineering project demonstrating Kong Gateway deployment, API security, Kubernetes integration, custom plugin development, observability, infrastructure as code, CI/CD, and production troubleshooting.
 
 The project was built as a practical environment for understanding how Kong operates in cloud-native API platforms rather than as a simple installation demo.
 
----
-
 ## Architecture
 
-```text
-                        API Clients
-                             |
-                             v
-                    Load Balancer / Proxy
-                             |
-                             v
-                     +---------------+
-                     | Kong Gateway  |
-                     +-------+-------+
-                             |
-          +------------------+------------------+
-          |                  |                  |
-          v                  v                  v
-     Authentication      Authorization      Rate Limiting
-        JWT / Key             ACL              Plugins
-          |                  |                  |
-          +------------------+------------------+
-                             |
-                             v
-                       Kong Routing
-                             |
-                             v
-                    Kubernetes Service
-                             |
-                             v
-                     Go Orders API Pods
+```mermaid
+flowchart TD
+    Client[API Clients] --> LB[Load Balancer / Proxy]
+    LB --> Kong[Kong Gateway]
+    
+    subgraph Security Layer
+        Kong --> Auth[Authentication<br/>JWT / Key]
+        Kong --> ACL[Authorization<br/>ACL]
+        Kong --> Rate[Rate Limiting<br/>Plugins]
+    end
+    
+    Auth & ACL & Rate --> Routing[Kong Routing]
+    Routing --> K8s[Kubernetes Service]
+    K8s --> Pods[Go Orders API Pods]
 ```
 
 The production architecture explored in the repository extends this model to multiple Kong Gateway instances across availability zones with Kubernetes health checks, PodDisruptionBudgets, external load balancing, observability, and infrastructure managed through code.
@@ -61,20 +48,12 @@ The production architecture explored in the repository extends this model to mul
 
 Development environment:
 
-```text
-Windows 11
-   |
-   v
-WSL2 / Ubuntu
-   |
-   v
-Docker Desktop
-   |
-   v
-kind Kubernetes Cluster
-   |
-   v
-Kong Gateway + Kong Ingress Controller
+```mermaid
+flowchart TD
+    Win[Windows 11] --> WSL[WSL2 / Ubuntu]
+    WSL --> Docker[Docker Desktop]
+    Docker --> Kind[kind Kubernetes Cluster]
+    Kind --> Kong[Kong Gateway + Kong Ingress Controller]
 ```
 
 ---
@@ -112,19 +91,11 @@ Several Kong authentication and authorization mechanisms are demonstrated.
 
 Requests to protected APIs require a valid JWT before traffic reaches the upstream service.
 
-```text
-Client
-  |
-  | Authorization: Bearer <JWT>
-  v
-Kong Gateway
-  |
-  | JWT validation
-  v
-ACL authorization
-  |
-  v
-Backend
+```mermaid
+flowchart TD
+    Client -- "Authorization: Bearer <JWT>" --> Kong[Kong Gateway]
+    Kong -- JWT validation --> ACL[ACL Authorization]
+    ACL --> Backend
 ```
 
 ### API Key Authentication
@@ -135,15 +106,12 @@ Kong Consumers and key-auth credentials are used to demonstrate API client authe
 
 Authentication and authorization are intentionally separated.
 
-```text
-JWT -> Who is the client?
-ACL -> Is the client allowed to access this API?
-```
+- **JWT** -> Who is the client?
+- **ACL** -> Is the client allowed to access this API?
 
 ### mTLS
 
 A local certificate lab demonstrates mutual TLS concepts including:
-
 - Certificate Authority
 - server certificates
 - client certificates
@@ -159,54 +127,36 @@ Generated certificates and private keys are intentionally excluded from source c
 The project uses Kong's rate-limiting plugin to enforce API request limits.
 
 Example lab policy:
+`5 requests / minute`
 
-```text
-5 requests / minute
-```
-
-The lab also documents why the `local` policy requires consideration when multiple Kong Data Plane instances are running, since counters are local to individual Gateway instances.
+The lab also documents why the local policy requires consideration when multiple Kong Data Plane instances are running, since counters are local to individual Gateway instances.
 
 ---
 
 ## Custom Kong Plugin
 
 A custom Lua plugin called:
-
-```text
-request-header-validator
-```
-
+`request-header-validator`
 was implemented using the Kong Plugin Development Kit.
 
 The plugin executes during Kong's access phase and validates that a required request header exists.
 
 Example:
-
-```text
-X-Client-ID
-```
+`X-Client-ID`
 
 Missing header:
-
-```text
-HTTP 400 Bad Request
-```
+`HTTP 400 Bad Request`
 
 Valid request:
 
-```text
-JWT
-+
-ACL authorization
-+
-X-Client-ID
-        |
-        v
-HTTP 200
+```mermaid
+flowchart TD
+    JWT[JWT] --> ACL[ACL authorization]
+    ACL --> Head[X-Client-ID]
+    Head --> Response[HTTP 200]
 ```
 
 The plugin demonstrates:
-
 - Kong plugin structure
 - `handler.lua`
 - `schema.lua`
@@ -221,10 +171,7 @@ The plugin demonstrates:
 The custom plugin is packaged into a versioned Kong Gateway Docker image rather than depending only on runtime-mounted plugin files.
 
 Example image:
-
-```text
-ghcr.io/merazsheikh/kong-request-header-validator:kong-plugin-v1.0.0
-```
+`ghcr.io/merazsheikh/kong-request-header-validator:kong-plugin-v1.0.0`
 
 This demonstrates a production-oriented deployment pattern where the Gateway runtime and custom plugin version are deployed together as an immutable artifact.
 
@@ -235,45 +182,24 @@ This demonstrates a production-oriented deployment pattern where the Gateway run
 A lightweight REST API written in Go is deployed behind Kong.
 
 Public API:
-
-```text
-GET /orders
-```
+`GET /orders`
 
 Internal application endpoint:
-
-```text
-GET /api/v1/orders
-```
+`GET /api/v1/orders`
 
 Kong transforms the public route before proxying the request to the application.
 
-```text
-Client
-
-GET /orders
-     |
-     v
-Kong Gateway
-     |
-     | request-transformer
-     v
-GET /api/v1/orders
-     |
-     v
-Kubernetes Service
-     |
-     v
-Go Orders API
+```mermaid
+flowchart TD
+    Client -- "GET /orders" --> Kong[Kong Gateway]
+    Kong -- "request-transformer plugin" --> Transformed["GET /api/v1/orders"]
+    Transformed --> K8s[Kubernetes Service]
+    K8s --> GoAPI[Go Orders API]
 ```
 
 The application also exposes:
-
-```text
-GET /health
-GET /ready
-```
-
+`GET /health`
+`GET /ready`
 for Kubernetes liveness and readiness probes.
 
 The container runs using a non-root numeric UID/GID and Kubernetes security controls.
@@ -283,13 +209,9 @@ The container runs using a non-root numeric UID/GID and Kubernetes security cont
 ## OpenAPI Contract
 
 The consumer-facing Orders API is documented using OpenAPI 3.0.
-
-```text
-openapi/orders-api.yaml
-```
+`openapi/orders-api.yaml`
 
 The contract documents:
-
 - `/orders`
 - JWT bearer authentication
 - response schemas
@@ -303,7 +225,6 @@ This intentionally describes the public API exposed by Kong rather than the appl
 ## Kubernetes Integration
 
 The repository includes examples of:
-
 - Deployments
 - Services
 - Ingress
@@ -317,20 +238,12 @@ The repository includes examples of:
 
 Example request path:
 
-```text
-Client
-  |
-  v
-Kong Gateway
-  |
-  v
-Kubernetes Service
-  |
-  v
-EndpointSlice
-  |
-  v
-Application Pod
+```mermaid
+flowchart TD
+    Client --> Kong[Kong Gateway]
+    Kong --> K8s[Kubernetes Service]
+    K8s --> EP[EndpointSlice]
+    EP --> Pod[Application Pod]
 ```
 
 ---
@@ -338,12 +251,9 @@ Application Pod
 ## Gateway API
 
 The project also demonstrates Kubernetes Gateway API resources:
-
-```text
-GatewayClass
-Gateway
-HTTPRoute
-```
+- `GatewayClass`
+- `Gateway`
+- `HTTPRoute`
 
 This provides experience with both traditional Kubernetes Ingress and the newer Gateway API model.
 
@@ -353,22 +263,16 @@ This provides experience with both traditional Kubernetes Ingress and the newer 
 
 The HA exercises explore running multiple Kong Gateway instances behind a Kubernetes Service.
 
-```text
-                    Load Balancer
-                         |
-              +----------+----------+
-              |          |          |
-              v          v          v
-            Kong-1     Kong-2     Kong-3
-              |          |          |
-              +----------+----------+
-                         |
-                         v
-                  Backend Services
+```mermaid
+flowchart TD
+    LB[Load Balancer] --> K1[Kong-1]
+    LB --> K2[Kong-2]
+    LB --> K3[Kong-3]
+    
+    K1 & K2 & K3 --> Backend[Backend Services]
 ```
 
 Production considerations documented include:
-
 - multiple Gateway replicas
 - multi-AZ deployment
 - readiness and liveness probes
@@ -388,20 +292,12 @@ Kong's Prometheus plugin is used to expose Gateway metrics.
 The observability exercises focus on distinguishing Gateway latency from upstream application latency.
 
 Useful Kong response headers include:
-
-```text
-X-Kong-Proxy-Latency
-X-Kong-Upstream-Latency
-X-Kong-Request-Id
-```
+- `X-Kong-Proxy-Latency`
+- `X-Kong-Upstream-Latency`
+- `X-Kong-Request-Id`
 
 This allows troubleshooting to distinguish:
-
-```text
-Gateway problem
-       vs
-Backend problem
-```
+`Gateway problem vs Backend problem`
 
 ---
 
@@ -414,50 +310,33 @@ The project intentionally includes failure scenarios rather than only successful
 An unprotected Ingress exposed the same `/echo` path as a protected route.
 
 Result:
-
-```text
 Expected: 401
 Observed: 200
-```
 
 The investigation identified overlapping Kubernetes Ingress resources.
 
 The obsolete route was removed and the expected security chain was restored:
-
-```text
-No JWT                    -> 401
-Valid JWT, unauthorized   -> 403
-Missing required header   -> 400
-Valid authorized request  -> 200
-```
+- No JWT -> 401
+- Valid JWT, unauthorized -> 403
+- Missing required header -> 400
+- Valid authorized request -> 200
 
 ### No Available Upstream
 
 The Orders API was deliberately scaled to zero replicas.
 
 Kong returned:
-
-```text
-HTTP 503
-failure to get a peer from the ring-balancer
-```
+`HTTP 503`
+`failure to get a peer from the ring-balancer`
 
 The troubleshooting path was:
 
-```text
-Kong Route
-   |
-   v
-Kong Service / Upstream
-   |
-   v
-Kubernetes Service
-   |
-   v
-EndpointSlice
-   |
-   v
-Pod readiness
+```mermaid
+flowchart TD
+    Route[Kong Route] --> Upstream[Kong Service / Upstream]
+    Upstream --> K8s[Kubernetes Service]
+    K8s --> EP[EndpointSlice]
+    EP --> Pod[Pod readiness]
 ```
 
 This demonstrates the importance of identifying whether an error originates from Kong or from the upstream application.
@@ -467,20 +346,13 @@ This demonstrates the importance of identifying whether an error originates from
 ## decK and APIOps
 
 A declarative Kong configuration is maintained under:
-
-```text
-deck/
-```
+`deck/`
 
 decK is used for offline configuration validation in CI.
 
 The lab intentionally separates ownership models:
-
-```text
-Kubernetes resources -> Kong Ingress Controller
-
-Declarative Gateway configuration -> decK / APIOps
-```
+- Kubernetes resources -> Kong Ingress Controller
+- Declarative Gateway configuration -> decK / APIOps
 
 The same runtime entities should not be independently managed by multiple configuration systems.
 
@@ -497,7 +369,6 @@ Terraform manages Kubernetes resources in the local lab environment.
 ### AWS EKS Architecture
 
 The AWS example contains infrastructure definitions for:
-
 - VPC
 - public/private subnet architecture
 - Amazon EKS
@@ -513,22 +384,16 @@ The AWS configuration is architecture and validation focused and is not applied 
 GitHub Actions validates the repository automatically.
 
 Current validation includes:
-
-```text
-Kubernetes YAML
-Terraform
-decK configuration
-Custom Kong Lua plugin
-Custom Kong Gateway Docker image
-```
+- Kubernetes YAML
+- Terraform
+- decK configuration
+- Custom Kong Lua plugin
+- Custom Kong Gateway Docker image
 
 A separate workflow publishes the versioned Kong custom-plugin image to GitHub Container Registry when a release tag is created.
 
 Example:
-
-```text
-kong-plugin-v1.0.0
-```
+`kong-plugin-v1.0.0`
 
 ---
 
@@ -579,7 +444,6 @@ kong-plugin-v1.0.0
 This project focuses on operational understanding as much as configuration.
 
 Important lessons include:
-
 - Kong Route selection must be verified before assuming a plugin has failed.
 - Authentication and authorization are separate concerns.
 - A valid JWT does not automatically mean a client is authorized.
@@ -598,7 +462,7 @@ Important lessons include:
 
 ## Project Status
 
-**Core lab complete.**
+*Core lab complete.*
 
 The repository represents a working Kong API engineering environment covering Gateway configuration, Kubernetes integration, API security, custom plugin development, Go API deployment, APIOps, infrastructure as code, CI/CD, observability, high availability, and production troubleshooting.
 
